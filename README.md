@@ -6,7 +6,7 @@ A real-time public transport visualization application that displays live vehicl
 
 ## Features
 
-- **Real-time vehicle tracking** - Live positions of trains, trams, and buses updated via WebSocket
+- **Real-time vehicle tracking** - Live positions of trains, trams, and buses updated via WebSocket using client-side StreamLayer
 - **3D visualization** - Interactive 3D globe view using ArcGIS SceneView
 - **Smooth animations** - Vehicle positions interpolated between updates for fluid movement
 - **Vehicle trajectories** - Colored path lines showing vehicle routes (FeatureLayer with UniqueValueRenderer)
@@ -23,7 +23,7 @@ src/
 ├── services/
 │   └── geops-api.ts           # WebSocket connection to geOps Realtime API
 ├── layers/
-│   ├── vehicle-layer.ts       # Vehicle FeatureLayer with dynamic UniqueValueRenderer
+│   ├── vehicle-layer.ts       # Vehicle client-side StreamLayer with dynamic UniqueValueRenderer
 │   └── trajectory-layer.ts    # Trajectory FeatureLayer with type-based styling
 ├── components/
 │   ├── search-panel.ts        # Station search functionality
@@ -150,11 +150,17 @@ pnpm run preview
 1. **WebSocket Connection** - The app connects to the geOps Realtime API via WebSocket
 2. **Bounding Box Subscription** - Subscribes to vehicle updates within the visible map extent
 3. **Trajectory Processing** - Receives trajectory data with time intervals for position interpolation
-4. **Animation Loop** - Uses `requestAnimationFrame` to smoothly animate vehicles between known positions
-5. **Scale-Based Decluttering** - Icons and vehicle types adapt based on zoom level (see below)
+4. **StreamLayer Rendering** - Vehicle positions are streamed to an client-side StreamLayer via `sendMessageToClient()` for efficient real-time updates
+5. **Animation Loop** - Uses `requestAnimationFrame` to smoothly animate vehicles between known positions
+6. **Scale-Based Decluttering** - Icons and vehicle types adapt based on zoom level (see below)
 
 ### Implementation Details
 
+- **StreamLayer ID system**: Each vehicle has a `TRACKID` (stable, identifies the vehicle) and each update
+  message has a unique `OBJECTID` (increments with every position update). StreamLayer requires unique
+  OBJECTIDs to process new observations, while TRACKID groups observations by vehicle.
+- **StreamLayer purge options**: Configured with `maxObservations: 1` to show only the latest position per vehicle, and `ageReceived: 1` to auto-remove stale features after 1 minute.
+- **OBJECTID overflow protection**: The counter resets at 1 billion to prevent overflow (safe since old features are purged).
 - **FPS reporting**: Calculated over rolling ~1s windows from the animation loop and updated periodically.
 - **Memory display**: Uses the non-standard `performance.memory` API which is available in Chromium-based browsers; other browsers will show `N/A`.
 - **BBox update threshold**: The subscription only refreshes when the extent changes beyond ~5% in size or center shift to avoid excessive WebSocket re-subscriptions.
@@ -178,8 +184,8 @@ Base icon sizes: **Rail** 38px, **Bus/Tram** 19px, **Minimum** 8px (at 100% scal
 1. On each view extent change, the application calculates the visible area in km²
 2. The `setIconScaleFactor()` function in `vehicle-layer.ts` sets the current scale step
 3. The `setTransportFilter()` and `setLongDistanceOnly()` methods in `geops-api.ts` filter the WebSocket subscription and remove vehicles that no longer match
-4. The vehicle FeatureLayer uses a `UniqueValueRenderer` with dynamically added symbols based on vehicle type, line name, delay category, state, and scale
-5. Scale changes are applied seamlessly through the animation loop—no explicit refresh needed
+4. The vehicle StreamLayer uses a `UniqueValueRenderer` with dynamically added symbols based on vehicle type, line name, delay category, state, and scale
+5. StreamLayer automatically manages feature updates via `sendMessageToClient()` for efficient real-time rendering
 
 ## Station Search
 

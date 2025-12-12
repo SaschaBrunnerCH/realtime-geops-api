@@ -72,6 +72,7 @@ import {
 import { GeopsApiService } from './services/geops-api';
 
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import type StreamLayer from '@arcgis/core/layers/StreamLayer';
 
 // Constants for extent-based filtering
 const TRAJECTORY_REFRESH_INTERVAL = 2000;
@@ -128,7 +129,7 @@ function setInitialCamera(view: __esri.SceneView): void {
 
 // Initialize map layers
 function initializeLayers(view: __esri.SceneView): {
-  vehicleLayer: FeatureLayer;
+  vehicleLayer: StreamLayer;
   trajectoryLayer: FeatureLayer;
   searchMarker: AnimatedMarker;
 } {
@@ -228,7 +229,7 @@ function createBBoxUpdater(
 }
 
 // Setup API service callbacks
-function setupApiCallbacks(apiService: GeopsApiService, vehicleLayer: FeatureLayer, statusPanel: StatusPanel): void {
+function setupApiCallbacks(apiService: GeopsApiService, vehicleLayer: StreamLayer, statusPanel: StatusPanel): void {
   apiService.onUpdate((vehicles) => {
     updateVehicles(vehicleLayer, vehicles);
   });
@@ -249,7 +250,7 @@ function setupApiCallbacks(apiService: GeopsApiService, vehicleLayer: FeatureLay
 }
 
 // Setup vehicle hover popup
-function setupVehiclePopup(view: __esri.SceneView, vehicleLayer: FeatureLayer): void {
+function setupVehiclePopup(view: __esri.SceneView, vehicleLayer: StreamLayer): void {
   const vehiclePopup = new VehiclePopup();
 
   view.on('pointer-move', async (event) => {
@@ -274,7 +275,7 @@ function setupVehiclePopup(view: __esri.SceneView, vehicleLayer: FeatureLayer): 
           event.y,
         );
       } else {
-        // FeatureLayer may need to query for attributes
+        // StreamLayer may need to query for attributes
         vehiclePopup.hide();
       }
     } else {
