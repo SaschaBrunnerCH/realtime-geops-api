@@ -306,7 +306,7 @@ async function init() {
     setInitialCamera(view);
 
     // Initialize layers
-    const { vehicleLayer, searchMarker } = initializeLayers(view);
+    const { vehicleLayer, trajectoryLayer, searchMarker } = initializeLayers(view);
 
     // Setup search
     setupSearch(view, searchMarker);
