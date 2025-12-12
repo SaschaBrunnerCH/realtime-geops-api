@@ -1,10 +1,10 @@
-import Graphic from "@arcgis/core/Graphic";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import Point from "@arcgis/core/geometry/Point";
-import Mesh from "@arcgis/core/geometry/Mesh";
-import MeshSymbol3D from "@arcgis/core/symbols/MeshSymbol3D";
-import FillSymbol3DLayer from "@arcgis/core/symbols/FillSymbol3DLayer";
-import pinpointUrl from "/pinpoint.glb?url";
+import Mesh from '@arcgis/core/geometry/Mesh';
+import Point from '@arcgis/core/geometry/Point';
+import Graphic from '@arcgis/core/Graphic';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
+import FillSymbol3DLayer from '@arcgis/core/symbols/FillSymbol3DLayer';
+import MeshSymbol3D from '@arcgis/core/symbols/MeshSymbol3D';
+import pinpointUrl from '/pinpoint.glb?url';
 
 // Animated marker for search results using a 3D pinpoint model
 export class AnimatedMarker {
@@ -15,10 +15,10 @@ export class AnimatedMarker {
 
   constructor() {
     this.layer = new GraphicsLayer({
-      id: "search-marker",
-      title: "Search Marker",
+      id: 'search-marker',
+      title: 'Search Marker',
       elevationInfo: {
-        mode: "relative-to-ground",
+        mode: 'relative-to-ground',
       },
     });
   }
@@ -41,7 +41,7 @@ export class AnimatedMarker {
 
     // Load the pinpoint GLB model
     const mesh = await Mesh.createFromGLTF(location, pinpointUrl, {
-      vertexSpace: "georeferenced",
+      vertexSpace: 'georeferenced',
     });
 
     // Scale the model to appropriate size

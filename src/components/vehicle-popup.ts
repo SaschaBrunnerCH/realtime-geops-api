@@ -28,10 +28,9 @@ const DEFAULT_VEHICLE = { icon: SBB_BUS_ICON, name: 'Vehicle' };
 
 // Delay thresholds in milliseconds
 const DELAY_THRESHOLDS = {
-  WARNING: 300000,  // 5 minutes
-  DANGER: 600000,   // 10 minutes
+  WARNING: 300000, // 5 minutes
+  DANGER: 600000, // 10 minutes
 };
-
 
 // Escape HTML special characters to prevent XSS
 function escapeHtml(text: string): string {

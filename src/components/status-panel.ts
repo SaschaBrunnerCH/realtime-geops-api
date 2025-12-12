@@ -1,5 +1,6 @@
-import { GeopsApiService } from '../services/geops-api';
 import { SBB_BUS_ICON, SBB_TRAM_ICON, SBB_TRAIN_ICON } from '../icons/sbb-icons';
+
+import type { GeopsApiService } from '../services/geops-api';
 import geopsLogoUrl from '/geops-logo.svg?url';
 import arcgisLogoUrl from '/logo.svg?url';
 
@@ -47,7 +48,9 @@ export class StatusPanel {
     const scaleEl = document.getElementById('stats-scale');
     if (extentEl) {
       // Format with apostrophe as thousands separator (Swiss style)
-      extentEl.textContent = Math.round(km2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+      extentEl.textContent = Math.round(km2)
+        .toString()
+        .replace(/\B(?=(\d{3})+(?!\d))/g, "'");
     }
     if (scaleEl) {
       scaleEl.textContent = detailLevel;
@@ -144,7 +147,7 @@ export class StatusPanel {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: false,
     }).format(now);
 
     const dateEl = document.getElementById('panel-clock-date');

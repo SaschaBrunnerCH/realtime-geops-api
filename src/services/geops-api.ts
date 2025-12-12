@@ -1,11 +1,6 @@
-import {
-  Vehicle,
-  GEOPS_CONFIG,
-  TrajectoryFeature,
-  TimeInterval,
-  VehicleState,
-  isLongDistanceTrain,
-} from "../types/geops";
+import { GEOPS_CONFIG, isLongDistanceTrain } from '../types/geops';
+
+import type { Vehicle, TrajectoryFeature, TimeInterval, VehicleState } from '../types/geops';
 
 interface WebSocketMessage {
   source: string;
@@ -36,13 +31,9 @@ interface VehicleTrajectory {
   state?: VehicleState;
 }
 
-type VehicleCallback = (vehicles: Vehicle[]) => void;
-type DeleteCallback = (trainId: string) => void;
-type TrajectoryCallback = (
-  vehicleId: string,
-  coords: [number, number][],
-  type?: string
-) => void;
+type VehicleCallback = (_vehicles: Vehicle[]) => void;
+type DeleteCallback = (_trainId: string) => void;
+type TrajectoryCallback = (_vehicleId: string, _coords: [number, number][], _type?: string) => void;
 
 // Animation configuration based on vehicle count
 const ANIMATION_CONFIG = {
@@ -70,11 +61,11 @@ export class GeopsApiService {
   private onVehicleUpdate: VehicleCallback | null = null;
   private onVehicleDelete: DeleteCallback | null = null;
   private onTrajectoryUpdate: TrajectoryCallback | null = null;
-  private onFpsUpdate: ((fps: number) => void) | null = null;
+  private onFpsUpdate: ((_fps: number) => void) | null = null;
   private reconnectTimeout: number | null = null;
   private isConnected = false;
   private pingInterval: number | null = null;
-  private currentMots: string[] = ["rail"]; // Default to trains only
+  private currentMots: string[] = ['rail']; // Default to trains only
   private currentBBox: {
     left: number;
     bottom: number;
@@ -83,7 +74,7 @@ export class GeopsApiService {
   } | null = null;
   private longDistanceOnly: boolean = false; // Filter to show only long-distance trains
 
-  constructor(mots: string[] = ["rail"]) {
+  constructor(mots: string[] = ['rail']) {
     this.currentMots = mots;
     this.connect();
     this.startAnimation();
@@ -108,23 +99,20 @@ export class GeopsApiService {
     };
 
     this.ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.error('WebSocket error:', error);
     };
 
     this.ws.onclose = () => {
       this.isConnected = false;
       this.stopPing();
-      this.reconnectTimeout = window.setTimeout(
-        () => this.connect(),
-        WEBSOCKET_CONFIG.RECONNECT_DELAY
-      );
+      this.reconnectTimeout = window.setTimeout(() => this.connect(), WEBSOCKET_CONFIG.RECONNECT_DELAY);
     };
   }
 
   private startPing() {
     this.pingInterval = window.setInterval(() => {
       if (this.ws && this.isConnected) {
-        this.ws.send("PING");
+        this.ws.send('PING');
       }
     }, WEBSOCKET_CONFIG.PING_INTERVAL);
   }
@@ -176,10 +164,7 @@ export class GeopsApiService {
         }
 
         // Update FPS display periodically
-        if (
-          timestamp - this.lastFpsUpdateTime >=
-          ANIMATION_CONFIG.FPS_UPDATE_INTERVAL
-        ) {
+        if (timestamp - this.lastFpsUpdateTime >= ANIMATION_CONFIG.FPS_UPDATE_INTERVAL) {
           const elapsedSeconds = (timestamp - this.fpsCalculationStart) / 1000;
           const fps = elapsedSeconds > 0 ? this.frameCount / elapsedSeconds : 0;
 
@@ -214,11 +199,7 @@ export class GeopsApiService {
     const vehicles: Vehicle[] = [];
 
     for (const trajectory of this.trajectories.values()) {
-      const position = this.interpolatePosition(
-        trajectory.coords,
-        trajectory.timeIntervals,
-        now
-      );
+      const position = this.interpolatePosition(trajectory.coords, trajectory.timeIntervals, now);
 
       if (position) {
         vehicles.push({
@@ -254,7 +235,7 @@ export class GeopsApiService {
     let bboxCommand = `BBOX ${left} ${bottom} ${right} ${top} ${WEBSOCKET_CONFIG.ZOOM_LEVEL}`;
 
     if (this.currentMots.length > 0) {
-      bboxCommand += ` mots=${this.currentMots.join(",")}`;
+      bboxCommand += ` mots=${this.currentMots.join(',')}`;
     }
 
     this.ws.send(bboxCommand);
@@ -267,10 +248,7 @@ export class GeopsApiService {
 
     // Check if bbox has changed significantly
     // Threshold ~5% for size and center shift to avoid excessive re-subscriptions
-    if (
-      this.currentBBox &&
-      !this.hasBBoxChangedEnough(this.currentBBox, newBBox)
-    ) {
+    if (this.currentBBox && !this.hasBBoxChangedEnough(this.currentBBox, newBBox)) {
       return;
     }
 
@@ -285,12 +263,7 @@ export class GeopsApiService {
         const y = lastCoord[1];
 
         // Check if position is outside new bbox
-        if (
-          x < newBBox.left ||
-          x > newBBox.right ||
-          y < newBBox.bottom ||
-          y > newBBox.top
-        ) {
+        if (x < newBBox.left || x > newBBox.right || y < newBBox.bottom || y > newBBox.top) {
           this.trajectories.delete(id);
           if (this.onVehicleDelete) {
             this.onVehicleDelete(id);
@@ -308,7 +281,7 @@ export class GeopsApiService {
   // Helper: determine if bbox change warrants resubscription
   private hasBBoxChangedEnough(
     oldBBox: { left: number; bottom: number; right: number; top: number },
-    newBBox: { left: number; bottom: number; right: number; top: number }
+    newBBox: { left: number; bottom: number; right: number; top: number },
   ): boolean {
     const threshold = WEBSOCKET_CONFIG.BBOX_CHANGE_THRESHOLD;
 
@@ -323,12 +296,9 @@ export class GeopsApiService {
     const centerYNew = (newBBox.bottom + newBBox.top) / 2;
 
     const widthChange = Math.abs(newWidth - oldWidth) / Math.max(oldWidth, 1);
-    const heightChange =
-      Math.abs(newHeight - oldHeight) / Math.max(oldHeight, 1);
-    const centerXChange =
-      Math.abs(centerXNew - centerXOld) / Math.max(oldWidth, 1);
-    const centerYChange =
-      Math.abs(centerYNew - centerYOld) / Math.max(oldHeight, 1);
+    const heightChange = Math.abs(newHeight - oldHeight) / Math.max(oldHeight, 1);
+    const centerXChange = Math.abs(centerXNew - centerXOld) / Math.max(oldWidth, 1);
+    const centerYChange = Math.abs(centerYNew - centerYOld) / Math.max(oldHeight, 1);
 
     return !(
       widthChange < threshold &&
@@ -344,9 +314,9 @@ export class GeopsApiService {
     this.currentMots = mots;
 
     // Remove trajectories that no longer match the filter
-    if (previousMots.length !== mots.length || !previousMots.every(m => mots.includes(m))) {
+    if (previousMots.length !== mots.length || !previousMots.every((m) => mots.includes(m))) {
       for (const [id, trajectory] of this.trajectories) {
-        if (!mots.includes(trajectory.type)) {
+        if (!trajectory.type || !mots.includes(trajectory.type)) {
           this.trajectories.delete(id);
           if (this.onVehicleDelete) {
             this.onVehicleDelete(id);
@@ -363,10 +333,7 @@ export class GeopsApiService {
       // Remove non-long-distance trains if filter is enabled
       if (enabled) {
         for (const [id, trajectory] of this.trajectories) {
-          if (
-            trajectory.type === "rail" &&
-            !isLongDistanceTrain(trajectory.lineName)
-          ) {
+          if (trajectory.type === 'rail' && !isLongDistanceTrain(trajectory.lineName)) {
             this.trajectories.delete(id);
             if (this.onVehicleDelete) {
               this.onVehicleDelete(id);
@@ -382,15 +349,15 @@ export class GeopsApiService {
       const message: WebSocketMessage = JSON.parse(data);
       const { source, content } = message;
 
-      if (source === "buffer" && Array.isArray(content)) {
+      if (source === 'buffer' && Array.isArray(content)) {
         // Handle buffered messages - each item is a full message object
         for (const item of content as BufferedMessage[]) {
           this.processBufferedItem(item);
         }
-      } else if (source === "trajectory") {
+      } else if (source === 'trajectory') {
         // Handle single trajectory update
         this.processTrajectory(content as TrajectoryFeature);
-      } else if (source === "deleted_vehicles") {
+      } else if (source === 'deleted_vehicles') {
         // Handle vehicle deletion - content is the train_id string
         const trainId = content as string;
         this.trajectories.delete(trainId);
@@ -404,9 +371,9 @@ export class GeopsApiService {
   }
 
   private processBufferedItem(item: BufferedMessage) {
-    if (item.source === "trajectory") {
+    if (item.source === 'trajectory') {
       this.processTrajectory(item.content as TrajectoryFeature);
-    } else if (item.source === "deleted_vehicles") {
+    } else if (item.source === 'deleted_vehicles') {
       const trainId = item.content as string;
       this.trajectories.delete(trainId);
       if (this.onVehicleDelete) {
@@ -420,18 +387,13 @@ export class GeopsApiService {
       return;
     }
 
-    const { train_id, time_intervals, line, destination, delay, type, state } =
-      feature.properties;
+    const { train_id, time_intervals, line, destination, delay, type, state } = feature.properties;
     const coords = feature.geometry.coordinates;
 
     if (!train_id || !time_intervals || !coords || coords.length === 0) return;
 
     // Filter out non-long-distance trains when filter is enabled
-    if (
-      this.longDistanceOnly &&
-      type === "rail" &&
-      !isLongDistanceTrain(line?.name)
-    ) {
+    if (this.longDistanceOnly && type === 'rail' && !isLongDistanceTrain(line?.name)) {
       return;
     }
 
@@ -459,7 +421,7 @@ export class GeopsApiService {
   // Find the surrounding time intervals for a given timestamp
   private findTimeIntervals(
     timeIntervals: TimeInterval[],
-    now: number
+    now: number,
   ): { prev: TimeInterval | null; next: TimeInterval | null } {
     let prev: TimeInterval | null = null;
     let next: TimeInterval | null = null;
@@ -480,12 +442,9 @@ export class GeopsApiService {
   private getPositionAtFraction(
     coords: [number, number][],
     fraction: number,
-    rotation: number
+    rotation: number,
   ): { x: number; y: number; rotation: number } {
-    const idx = Math.min(
-      Math.floor(fraction * (coords.length - 1)),
-      coords.length - 1
-    );
+    const idx = Math.min(Math.floor(fraction * (coords.length - 1)), coords.length - 1);
     return {
       x: coords[idx][0],
       y: coords[idx][1],
@@ -498,7 +457,7 @@ export class GeopsApiService {
     coords: [number, number][],
     prev: TimeInterval,
     next: TimeInterval,
-    now: number
+    now: number,
   ): { x: number; y: number; rotation: number } {
     const timeDiff = next[0] - prev[0];
     const timeProgress = timeDiff > 0 ? (now - prev[0]) / timeDiff : 0;
@@ -518,10 +477,8 @@ export class GeopsApiService {
     }
 
     // Linear interpolation between two coordinates
-    const x =
-      coords[idx][0] + (coords[idx + 1][0] - coords[idx][0]) * subFraction;
-    const y =
-      coords[idx][1] + (coords[idx + 1][1] - coords[idx][1]) * subFraction;
+    const x = coords[idx][0] + (coords[idx + 1][0] - coords[idx][0]) * subFraction;
+    const y = coords[idx][1] + (coords[idx + 1][1] - coords[idx][1]) * subFraction;
     const rotation = prev[2] + (next[2] - prev[2]) * timeProgress;
 
     return { x, y, rotation };
@@ -530,7 +487,7 @@ export class GeopsApiService {
   private interpolatePosition(
     coords: [number, number][],
     timeIntervals: TimeInterval[],
-    now: number
+    now: number,
   ): { x: number; y: number; rotation: number } | null {
     if (timeIntervals.length === 0) return null;
 
@@ -566,7 +523,7 @@ export class GeopsApiService {
     this.onTrajectoryUpdate = callback;
   }
 
-  onFps(callback: (fps: number) => void) {
+  onFps(callback: (_fps: number) => void) {
     this.onFpsUpdate = callback;
   }
 
@@ -585,11 +542,11 @@ export class GeopsApiService {
     let bus = 0;
 
     for (const trajectory of this.trajectories.values()) {
-      if (trajectory.type === "rail") {
+      if (trajectory.type === 'rail') {
         rail++;
-      } else if (trajectory.type === "tram") {
+      } else if (trajectory.type === 'tram') {
         tram++;
-      } else if (trajectory.type === "bus") {
+      } else if (trajectory.type === 'bus') {
         bus++;
       }
     }

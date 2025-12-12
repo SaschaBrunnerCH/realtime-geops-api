@@ -1,18 +1,19 @@
-import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import Graphic from "@arcgis/core/Graphic";
-import Point from "@arcgis/core/geometry/Point";
-import SpatialReference from "@arcgis/core/geometry/SpatialReference";
-import * as projectOperator from "@arcgis/core/geometry/operators/projectOperator";
-import UniqueValueRenderer from "@arcgis/core/renderers/UniqueValueRenderer";
-import PointSymbol3D from "@arcgis/core/symbols/PointSymbol3D";
-import IconSymbol3DLayer from "@arcgis/core/symbols/IconSymbol3DLayer";
-import { Vehicle, VehicleState } from "../types/geops";
+import * as projectOperator from '@arcgis/core/geometry/operators/projectOperator';
+import Point from '@arcgis/core/geometry/Point';
+import SpatialReference from '@arcgis/core/geometry/SpatialReference';
+import Graphic from '@arcgis/core/Graphic';
+import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import UniqueValueRenderer from '@arcgis/core/renderers/UniqueValueRenderer';
+import IconSymbol3DLayer from '@arcgis/core/symbols/IconSymbol3DLayer';
+import PointSymbol3D from '@arcgis/core/symbols/PointSymbol3D';
+
+import type { Vehicle, VehicleState } from '../types/geops';
 
 // Visualization mode type
-type VisualizationMode = "elevated" | "3d";
+type VisualizationMode = 'elevated' | '3d';
 
 // Current visualization mode
-let currentMode: VisualizationMode = "elevated";
+const currentMode: VisualizationMode = 'elevated';
 
 // Current scale factor for icons (1.0 = default size, smaller = smaller icons)
 let currentScaleFactor: number = 1.0;
@@ -43,8 +44,8 @@ async function ensureProjectionLoaded(): Promise<void> {
   await projectionLoading;
 }
 
-// Initialize projection at module load
-ensureProjectionLoaded();
+// Initialize projection at module load (fire-and-forget)
+void ensureProjectionLoaded();
 
 // Project a point from Web Mercator to target spatial reference
 function projectToTarget(x: number, y: number, z: number): Point {
@@ -58,7 +59,7 @@ function projectToTarget(x: number, y: number, z: number): Point {
 }
 
 // Default colors
-const SBB_RED = "#e2231a";
+const SBB_RED = '#e2231a';
 
 // Store object IDs by vehicle ID for efficient updates
 const vehicleObjectIds = new Map<string, number>();
@@ -85,10 +86,9 @@ const ICON_CONFIG = {
 
 // Area thresholds for scale-based decluttering (3 discrete steps)
 export const AREA_THRESHOLDS = {
-  MEDIUM: 10000,   // km² - below: detailed (all vehicles, 100% icons), above: reduced (trains only, 60% icons)
-  SMALL: 50000,    // km² - above: minimal (long-distance only, 30% icons, no line numbers)
+  MEDIUM: 10000, // km² - below: detailed (all vehicles, 100% icons), above: reduced (trains only, 60% icons)
+  SMALL: 50000, // km² - above: minimal (long-distance only, 30% icons, no line numbers)
 };
-
 
 // Cache for SVG icons by line name (with max size to prevent memory leak)
 const svgIconCache = new Map<string, string>();
@@ -107,14 +107,14 @@ function calculateFontSize(textLength: number, size: number): number {
 // Generate SVG icon with line name text
 function createLineNameSvg(
   lineName: string,
-  bgColor: string = "#22c55e",
+  bgColor: string = '#22c55e',
   size: number = ICON_CONFIG.DEFAULT_SIZE,
-  vehicleType: string = "",
+  vehicleType: string = '',
   showText: boolean = true,
-  shape: IconShape = 'circle'
+  shape: IconShape = 'circle',
 ): string {
   // Rail and tram get the outer gray ring/border
-  const hasOuterBorder = vehicleType === "rail" || vehicleType === "tram";
+  const hasOuterBorder = vehicleType === 'rail' || vehicleType === 'tram';
   const cacheKey = `${lineName}-${bgColor}-${size}-${vehicleType}-${showText}-${shape}`;
   if (svgIconCache.has(cacheKey)) {
     return svgIconCache.get(cacheKey)!;
@@ -192,16 +192,16 @@ function escapeXml(text: string): string {
 
 // Get delay color based on delay value in milliseconds
 function getDelayColor(delay: number): string {
-  if (delay < 60000) return "#22c55e"; // green (< 1 min)
-  if (delay < 300000) return "#f59e0b"; // orange (1-5 min)
-  return "#ef4444"; // red (>= 5 min)
+  if (delay < 60000) return '#22c55e'; // green (< 1 min)
+  if (delay < 300000) return '#f59e0b'; // orange (1-5 min)
+  return '#ef4444'; // red (>= 5 min)
 }
 
 // Get delay category for renderer (reduces unique combinations)
 function getDelayCategory(delay: number): string {
-  if (delay < 60000) return "on-time";      // green (< 1 min)
-  if (delay < 300000) return "delayed";     // orange (1-5 min)
-  return "very-delayed";                     // red (>= 5 min)
+  if (delay < 60000) return 'on-time'; // green (< 1 min)
+  if (delay < 300000) return 'delayed'; // orange (1-5 min)
+  return 'very-delayed'; // red (>= 5 min)
 }
 
 // Get current scale key for renderer (combines scale factor and text visibility)
@@ -216,16 +216,11 @@ function getRendererKey(type: string, lineName: string, delayCategory: string, s
 }
 
 // Ensure symbol exists in renderer, add if not
-function ensureSymbolInRenderer(
-  type: string,
-  lineName: string,
-  delay: number,
-  state: VehicleState
-): void {
+function ensureSymbolInRenderer(type: string, lineName: string, delay: number, state: VehicleState): void {
   if (!vehicleRenderer) return;
 
   const delayCategory = getDelayCategory(delay);
-  const stateStr = state || "DRIVING";
+  const stateStr = state || 'DRIVING';
   const key = getRendererKey(type, lineName, delayCategory, stateStr);
 
   if (addedSymbolKeys.has(key)) return;
@@ -247,7 +242,7 @@ export function createVehicleLayer(): FeatureLayer {
   const defaultSymbol = new PointSymbol3D({
     symbolLayers: [
       new IconSymbol3DLayer({
-        resource: { primitive: "circle" },
+        resource: { primitive: 'circle' },
         material: { color: [128, 128, 128] },
         size: 12,
       }),
@@ -255,34 +250,34 @@ export function createVehicleLayer(): FeatureLayer {
   });
 
   vehicleRenderer = new UniqueValueRenderer({
-    field: "symbolKey",
+    field: 'symbolKey',
     defaultSymbol: defaultSymbol,
     uniqueValueInfos: [],
   });
 
   const layer = new FeatureLayer({
-    id: "vehicles",
-    title: "Vehicles",
+    id: 'vehicles',
+    title: 'Vehicles',
     source: [],
-    objectIdField: "OBJECTID",
-    geometryType: "point",
+    objectIdField: 'OBJECTID',
+    geometryType: 'point',
     hasZ: true,
     spatialReference: targetSpatialReference,
     elevationInfo: {
-      mode: "relative-to-ground",
+      mode: 'relative-to-ground',
     },
     fields: [
-      { name: "OBJECTID", alias: "Object ID", type: "oid" },
-      { name: "vehicleId", alias: "Vehicle ID", type: "string" },
-      { name: "lineName", alias: "Line Name", type: "string" },
-      { name: "destination", alias: "Destination", type: "string" },
-      { name: "delay", alias: "Delay", type: "integer" },
-      { name: "type", alias: "Vehicle Type", type: "string" },
-      { name: "state", alias: "State", type: "string" },
-      { name: "lineColor", alias: "Line Color", type: "string" },
-      { name: "symbolKey", alias: "Symbol Key", type: "string" },
+      { name: 'OBJECTID', alias: 'Object ID', type: 'oid' },
+      { name: 'vehicleId', alias: 'Vehicle ID', type: 'string' },
+      { name: 'lineName', alias: 'Line Name', type: 'string' },
+      { name: 'destination', alias: 'Destination', type: 'string' },
+      { name: 'delay', alias: 'Delay', type: 'integer' },
+      { name: 'type', alias: 'Vehicle Type', type: 'string' },
+      { name: 'state', alias: 'State', type: 'string' },
+      { name: 'lineColor', alias: 'Line Color', type: 'string' },
+      { name: 'symbolKey', alias: 'Symbol Key', type: 'string' },
     ],
-    outFields: ["*"], // Include all fields in queries/hitTest
+    outFields: ['*'], // Include all fields in queries/hitTest
     renderer: vehicleRenderer,
   });
 
@@ -290,21 +285,27 @@ export function createVehicleLayer(): FeatureLayer {
 }
 
 // Create symbol for a vehicle based on current mode and state
-function createVehicleSymbol(lineName: string, delay: number, rotation: number, type?: string, state?: VehicleState): __esri.Symbol {
+function createVehicleSymbol(
+  lineName: string,
+  delay: number,
+  rotation: number,
+  type?: string,
+  state?: VehicleState,
+): __esri.Symbol {
   const delayColor = getDelayColor(delay);
   const iconSize = getIconSize(type);
   const showText = shouldShowLineNumber();
   // Use square shape for BOARDING, circle for DRIVING (default)
-  const shape: IconShape = state === "BOARDING" ? "square" : "circle";
-  const iconUrl = createLineNameSvg(lineName, delayColor, iconSize * 4, type || "", showText, shape); // Quadruple size for better resolution
+  const shape: IconShape = state === 'BOARDING' ? 'square' : 'circle';
+  const iconUrl = createLineNameSvg(lineName, delayColor, iconSize * 4, type || '', showText, shape); // Quadruple size for better resolution
 
-  if (currentMode === "3d") {
+  if (currentMode === '3d') {
     return {
-      type: "point-3d",
+      type: 'point-3d',
       symbolLayers: [
         {
-          type: "object",
-          resource: { primitive: state === "BOARDING" ? "cube" : "cone" },
+          type: 'object',
+          resource: { primitive: state === 'BOARDING' ? 'cube' : 'cone' },
           material: { color: delayColor },
           height: iconSize * 6,
           width: iconSize * 3,
@@ -317,10 +318,10 @@ function createVehicleSymbol(lineName: string, delay: number, rotation: number, 
 
   // Elevated mode (default) - SVG icon with line name
   return {
-    type: "point-3d",
+    type: 'point-3d',
     symbolLayers: [
       {
-        type: "icon",
+        type: 'icon',
         resource: { href: iconUrl },
         size: iconSize,
       },
@@ -331,7 +332,7 @@ function createVehicleSymbol(lineName: string, delay: number, rotation: number, 
       minWorldLength: 50,
     },
     callout: {
-      type: "line",
+      type: 'line',
       color: [150, 150, 150],
       size: 1,
       border: { color: [255, 255, 255, 0.7] },
@@ -342,7 +343,7 @@ function createVehicleSymbol(lineName: string, delay: number, rotation: number, 
 // Get icon size based on vehicle type and current scale factor
 function getIconSize(type?: string): number {
   const { BASE_SIZES, MIN_SIZE } = ICON_CONFIG;
-  const baseSize = type === "rail" ? BASE_SIZES.rail : BASE_SIZES.bus;
+  const baseSize = type === 'rail' ? BASE_SIZES.rail : BASE_SIZES.bus;
   return Math.max(MIN_SIZE, Math.round(baseSize * currentScaleFactor));
 }
 
@@ -369,10 +370,7 @@ function shouldShowLineNumber(): boolean {
 }
 
 // Update vehicles on the layer
-export function updateVehicles(
-  layer: FeatureLayer,
-  vehicles: Vehicle[]
-): void {
+export function updateVehicles(layer: FeatureLayer, vehicles: Vehicle[]): void {
   // Skip if projection not loaded yet
   if (!projectionLoaded) return;
 
@@ -390,13 +388,13 @@ export function updateVehicles(
     // Project from Web Mercator (3857) to target spatial reference
     const projectedPoint = projectToTarget(vehicle.x, vehicle.y, 0);
 
-    const lineName = vehicle.lineName || "?";
+    const lineName = vehicle.lineName || '?';
     const delay = vehicle.delay || 0;
-    const type = vehicle.type || "";
-    const state = vehicle.state || "DRIVING";
+    const type = vehicle.type || '';
+    const state = vehicle.state || 'DRIVING';
 
     // Ensure symbol exists in renderer for this combination
-    ensureSymbolInRenderer(type, lineName, delay, state as VehicleState);
+    ensureSymbolInRenderer(type, lineName, delay, state);
 
     // Create symbol key for renderer lookup
     const delayCategory = getDelayCategory(delay);
@@ -412,7 +410,7 @@ export function updateVehicles(
     const attributes = {
       vehicleId: vehicle.id,
       lineName: lineName,
-      destination: vehicle.destination || "",
+      destination: vehicle.destination || '',
       delay: delay,
       type: type,
       state: state,
@@ -452,7 +450,7 @@ export function updateVehicles(
 
   // Apply all edits in a single batch
   if (addFeatures.length > 0 || updateFeatures.length > 0 || deleteFeatures.length > 0) {
-    layer.applyEdits({
+    void layer.applyEdits({
       addFeatures,
       updateFeatures,
       deleteFeatures,
@@ -464,7 +462,7 @@ export function updateVehicles(
 export function removeVehicle(layer: FeatureLayer, vehicleId: string): void {
   const objectId = vehicleObjectIds.get(vehicleId);
   if (objectId !== undefined) {
-    layer.applyEdits({
+    void layer.applyEdits({
       deleteFeatures: [{ objectId }],
     });
     vehicleObjectIds.delete(vehicleId);

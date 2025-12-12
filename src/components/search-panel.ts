@@ -25,7 +25,7 @@ interface StopsResponse {
   features: StopFeature[];
 }
 
-type StationSelectCallback = (lng: number, lat: number, name: string) => void;
+type StationSelectCallback = (_lng: number, _lat: number, _name: string) => void;
 type ClearCallback = () => void;
 
 // Escape HTML special characters to prevent XSS
@@ -93,7 +93,7 @@ export class SearchPanel {
       }
 
       this.searchTimeout = window.setTimeout(() => {
-        this.searchStations(query);
+        void this.searchStations(query);
       }, 300);
     });
 
@@ -151,14 +151,15 @@ export class SearchPanel {
       return;
     }
 
-    this.listElement.innerHTML = features.map(feature => {
-      const { name, country_code } = feature.properties;
-      const [lng, lat] = feature.geometry.coordinates;
-      const escapedName = escapeHtml(name);
-      const escapedCountry = country_code ? escapeHtml(country_code) : '';
-      const countryLabel = escapedCountry ? ` (${escapedCountry})` : '';
+    this.listElement.innerHTML = features
+      .map((feature) => {
+        const { name, country_code } = feature.properties;
+        const [lng, lat] = feature.geometry.coordinates;
+        const escapedName = escapeHtml(name);
+        const escapedCountry = country_code ? escapeHtml(country_code) : '';
+        const countryLabel = escapedCountry ? ` (${escapedCountry})` : '';
 
-      return `
+        return `
         <calcite-list-item
           label="${escapedName}${countryLabel}"
           data-lng="${lng}"
@@ -168,10 +169,11 @@ export class SearchPanel {
           <calcite-icon icon="pin" slot="content-start"></calcite-icon>
         </calcite-list-item>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Add click handlers to list items
-    this.listElement.querySelectorAll('calcite-list-item').forEach(item => {
+    this.listElement.querySelectorAll('calcite-list-item').forEach((item) => {
       item.addEventListener('click', () => {
         const lng = parseFloat(item.getAttribute('data-lng') || '0');
         const lat = parseFloat(item.getAttribute('data-lat') || '0');

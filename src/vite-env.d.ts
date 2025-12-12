@@ -16,9 +16,12 @@ interface ImportMeta {
 declare namespace JSX {
   interface IntrinsicElements {
     'calcite-shell': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-    'arcgis-scene': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
-      basemap?: string;
-      ground?: string;
-    }, HTMLElement>;
+    'arcgis-scene': React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        basemap?: string;
+        ground?: string;
+      },
+      HTMLElement
+    >;
   }
 }

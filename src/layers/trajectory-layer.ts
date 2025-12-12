@@ -1,11 +1,11 @@
-import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import Graphic from "@arcgis/core/Graphic";
-import Polyline from "@arcgis/core/geometry/Polyline";
-import SpatialReference from "@arcgis/core/geometry/SpatialReference";
-import * as projectOperator from "@arcgis/core/geometry/operators/projectOperator";
-import Point from "@arcgis/core/geometry/Point";
-import UniqueValueRenderer from "@arcgis/core/renderers/UniqueValueRenderer";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import * as projectOperator from '@arcgis/core/geometry/operators/projectOperator';
+import Point from '@arcgis/core/geometry/Point';
+import Polyline from '@arcgis/core/geometry/Polyline';
+import SpatialReference from '@arcgis/core/geometry/SpatialReference';
+import Graphic from '@arcgis/core/Graphic';
+import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import UniqueValueRenderer from '@arcgis/core/renderers/UniqueValueRenderer';
+import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 
 // Spatial references
 const WEB_MERCATOR = new SpatialReference({ wkid: 3857 });
@@ -41,7 +41,8 @@ async function ensureProjectionLoaded(): Promise<void> {
   await projectionLoading;
 }
 
-ensureProjectionLoaded();
+// Initialize projection at module load (fire-and-forget)
+void ensureProjectionLoaded();
 
 // Project coordinates from Web Mercator to target spatial reference
 function projectCoordsToTarget(coords: [number, number][]): number[][] {
@@ -59,59 +60,59 @@ function projectCoordsToTarget(coords: [number, number][]): number[][] {
 // Create the trajectory layer
 export function createTrajectoryLayer(): FeatureLayer {
   const layer = new FeatureLayer({
-    id: "trajectories",
-    title: "Vehicle Trajectories",
+    id: 'trajectories',
+    title: 'Vehicle Trajectories',
     source: [], // Empty source, features added via applyEdits
-    objectIdField: "OBJECTID",
-    geometryType: "polyline",
+    objectIdField: 'OBJECTID',
+    geometryType: 'polyline',
     spatialReference: targetSpatialReference,
     fields: [
       {
-        name: "OBJECTID",
-        alias: "Object ID",
-        type: "oid",
+        name: 'OBJECTID',
+        alias: 'Object ID',
+        type: 'oid',
       },
       {
-        name: "vehicleId",
-        alias: "Vehicle ID",
-        type: "string",
+        name: 'vehicleId',
+        alias: 'Vehicle ID',
+        type: 'string',
       },
       {
-        name: "type",
-        alias: "Vehicle Type",
-        type: "string",
+        name: 'type',
+        alias: 'Vehicle Type',
+        type: 'string',
       },
     ],
     renderer: new UniqueValueRenderer({
-      field: "type",
+      field: 'type',
       defaultSymbol: new SimpleLineSymbol({
         color: [128, 128, 128, 0.6],
         width: 2,
-        style: "solid",
+        style: 'solid',
       }),
       uniqueValueInfos: [
         {
-          value: "rail",
+          value: 'rail',
           symbol: new SimpleLineSymbol({
             color: [59, 130, 246, 0.6], // blue
             width: 3,
-            style: "solid",
+            style: 'solid',
           }),
         },
         {
-          value: "bus",
+          value: 'bus',
           symbol: new SimpleLineSymbol({
             color: [34, 197, 94, 0.6], // green
             width: 2,
-            style: "solid",
+            style: 'solid',
           }),
         },
         {
-          value: "tram",
+          value: 'tram',
           symbol: new SimpleLineSymbol({
             color: [168, 85, 247, 0.6], // purple
             width: 2,
-            style: "solid",
+            style: 'solid',
           }),
         },
       ],
@@ -123,11 +124,7 @@ export function createTrajectoryLayer(): FeatureLayer {
 }
 
 // Update a single trajectory
-export function updateTrajectory(
-  vehicleId: string,
-  coords: [number, number][],
-  type?: string
-): void {
+export function updateTrajectory(vehicleId: string, coords: [number, number][], type?: string): void {
   trajectories.set(vehicleId, { coords, type });
 }
 
@@ -138,7 +135,7 @@ export function removeTrajectory(vehicleId: string): void {
   // Remove associated feature via applyEdits
   const objectId = trajectoryObjectIds.get(vehicleId);
   if (objectId !== undefined && trajectoryLayer) {
-    trajectoryLayer.applyEdits({
+    void trajectoryLayer.applyEdits({
       deleteFeatures: [{ objectId }],
     });
     trajectoryObjectIds.delete(vehicleId);
@@ -209,7 +206,7 @@ export function refreshTrajectories(): void {
 
   // Apply all edits in a single batch
   if (addFeatures.length > 0 || updateFeatures.length > 0 || deleteFeatures.length > 0) {
-    trajectoryLayer.applyEdits({
+    void trajectoryLayer.applyEdits({
       addFeatures,
       updateFeatures,
       deleteFeatures,

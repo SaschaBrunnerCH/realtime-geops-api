@@ -1,59 +1,64 @@
-import "./style.css";
+import './style.css';
 
 // Import Calcite CSS
-import "@esri/calcite-components/dist/calcite/calcite.css";
+import '@esri/calcite-components/dist/calcite/calcite.css';
 
 // Parse query string parameters for portal and webscene id
 const urlParams = new URLSearchParams(window.location.search);
-const queryPortal = urlParams.get("portal");
-const queryWebsceneId = urlParams.get("webscene");
+const queryPortal = urlParams.get('portal');
+const queryWebsceneId = urlParams.get('webscene');
 
 // Default values (can be overridden by env vars or query string)
-const DEFAULT_PORTAL_URL = "https://www.arcgis.com";
-const DEFAULT_WEBSCENE_ID = "7f6ae34b6cf749cd86de9df23421d701";
+const DEFAULT_PORTAL_URL = 'https://www.arcgis.com';
+const DEFAULT_WEBSCENE_ID = '7f6ae34b6cf749cd86de9df23421d701';
 
 // Priority: query string > env var > default
-const portalUrl =
-  queryPortal || import.meta.env.VITE_PORTAL_URL || DEFAULT_PORTAL_URL;
-const websceneId =
-  queryWebsceneId || import.meta.env.VITE_WEBSCENE_ID || DEFAULT_WEBSCENE_ID;
+const portalUrl = queryPortal || import.meta.env.VITE_PORTAL_URL || DEFAULT_PORTAL_URL;
+const websceneId = queryWebsceneId || import.meta.env.VITE_WEBSCENE_ID || DEFAULT_WEBSCENE_ID;
 
 // Configure ArcGIS assets, portal, and API key
-import esriConfig from "@arcgis/core/config";
 // Use CDN for ArcGIS assets in production, local node_modules in development
 esriConfig.assetsPath = import.meta.env.DEV
-  ? "./node_modules/@arcgis/core/assets"
-  : "https://js.arcgis.com/4.34/@arcgis/core/assets";
+  ? './node_modules/@arcgis/core/assets'
+  : 'https://js.arcgis.com/4.34/@arcgis/core/assets';
 esriConfig.portalUrl = portalUrl;
 if (import.meta.env.VITE_ARCGIS_API_KEY) {
   esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
 }
 
 // Import and configure Calcite components (v3.x uses CDN for assets by default)
-import { setAssetPath } from "@esri/calcite-components/dist/components";
 // Use CDN for assets (default in v3)
-setAssetPath("https://js.arcgis.com/calcite-components/3.3.3/assets");
+setAssetPath('https://js.arcgis.com/calcite-components/3.3.3/assets');
 
 // Import Calcite components we'll use (v3 - no .js extension)
-import "@esri/calcite-components/dist/components/calcite-shell";
-import "@esri/calcite-components/dist/components/calcite-shell-panel";
+import '@esri/calcite-components/dist/components/calcite-shell';
+import '@esri/calcite-components/dist/components/calcite-shell-panel';
 
 // Import ArcGIS map components
-import "@arcgis/map-components/dist/components/arcgis-scene";
-import "@arcgis/map-components/dist/components/arcgis-zoom";
-import "@arcgis/map-components/dist/components/arcgis-navigation-toggle";
-import "@arcgis/map-components/dist/components/arcgis-compass";
+import '@arcgis/map-components/dist/components/arcgis-scene';
+import '@arcgis/map-components/dist/components/arcgis-zoom';
+import '@arcgis/map-components/dist/components/arcgis-navigation-toggle';
+import '@arcgis/map-components/dist/components/arcgis-compass';
 
 // Import ArcGIS classes for scene configuration
-import Camera from "@arcgis/core/Camera";
-import Point from "@arcgis/core/geometry/Point";
-import * as projectOperator from "@arcgis/core/geometry/operators/projectOperator";
-import SpatialReference from "@arcgis/core/geometry/SpatialReference";
-import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
+import Camera from '@arcgis/core/Camera';
+import esriConfig from '@arcgis/core/config';
+import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
+import * as projectOperator from '@arcgis/core/geometry/operators/projectOperator';
+import Point from '@arcgis/core/geometry/Point';
+import SpatialReference from '@arcgis/core/geometry/SpatialReference';
+import { setAssetPath } from '@esri/calcite-components/dist/components';
 
 // Import our services and components
-import { GeopsApiService } from "./services/geops-api";
+import { StatusPanel } from './components/status-panel';
+import { VehiclePopup } from './components/vehicle-popup';
+import {
+  createTrajectoryLayer,
+  updateTrajectory,
+  removeTrajectory,
+  refreshTrajectories,
+  setTargetSpatialReference as setTrajectorySpatialReference,
+} from './layers/trajectory-layer';
 import {
   createVehicleLayer,
   updateVehicles,
@@ -61,16 +66,10 @@ import {
   setTargetSpatialReference as setVehicleSpatialReference,
   setIconScaleFactor,
   AREA_THRESHOLDS,
-} from "./layers/vehicle-layer";
-import {
-  createTrajectoryLayer,
-  updateTrajectory,
-  removeTrajectory,
-  refreshTrajectories,
-  setTargetSpatialReference as setTrajectorySpatialReference,
-} from "./layers/trajectory-layer";
-import { StatusPanel } from "./components/status-panel";
-import { VehiclePopup } from "./components/vehicle-popup";
+} from './layers/vehicle-layer';
+import { GeopsApiService } from './services/geops-api';
+
+import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 // import { SearchPanel } from "./components/search-panel";
 // import { AnimatedMarker } from "./components/animated-marker";
 
@@ -81,15 +80,9 @@ const TRAJECTORY_REFRESH_INTERVAL = 2000;
 let trajectoryRefreshInterval: number | null = null;
 
 // Calculate extent area in km² from Web Mercator coordinates
-function calculateExtentAreaKm2(
-  xmin: number,
-  ymin: number,
-  xmax: number,
-  ymax: number
-): number {
+function calculateExtentAreaKm2(xmin: number, ymin: number, xmax: number, ymax: number): number {
   // Convert Web Mercator to approximate lat/lon for area calculation
-  const metersToLat = (y: number) =>
-    (Math.atan(Math.exp(y / 6378137)) * 2 - Math.PI / 2) * (180 / Math.PI);
+  const metersToLat = (y: number) => (Math.atan(Math.exp(y / 6378137)) * 2 - Math.PI / 2) * (180 / Math.PI);
   const lat1 = metersToLat(ymin);
   const lat2 = metersToLat(ymax);
   const avgLat = (lat1 + lat2) / 2;
@@ -107,13 +100,11 @@ function calculateExtentAreaKm2(
 // Ensure ground/terrain is present in the scene
 async function ensureGroundTerrain(view: __esri.SceneView): Promise<void> {
   if (view.map && (!view.map.ground || view.map.ground.layers.length === 0)) {
-    const { default: ElevationLayer } = await import(
-      "@arcgis/core/layers/ElevationLayer"
-    );
+    const { default: ElevationLayer } = await import('@arcgis/core/layers/ElevationLayer');
     view.map.ground.layers.add(
       new ElevationLayer({
-        url: "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer",
-      })
+        url: 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer',
+      }),
     );
   }
 }
@@ -181,7 +172,7 @@ function createBBoxUpdater(
   view: __esri.SceneView,
   webMercator: SpatialReference,
   apiService: GeopsApiService,
-  statusPanel: StatusPanel
+  statusPanel: StatusPanel,
 ): () => void {
   return () => {
     const extent = view.extent;
@@ -203,10 +194,7 @@ function createBBoxUpdater(
         ymax: extent.ymax,
       };
     } else {
-      const projectedExtent = projectOperator.execute(
-        extent,
-        webMercator
-      ) as __esri.Extent;
+      const projectedExtent = projectOperator.execute(extent, webMercator) as __esri.Extent;
       if (!projectedExtent) return;
       wmExtent = {
         xmin: projectedExtent.xmin,
@@ -216,47 +204,33 @@ function createBBoxUpdater(
       };
     }
 
-    const areaKm2 = calculateExtentAreaKm2(
-      wmExtent.xmin,
-      wmExtent.ymin,
-      wmExtent.xmax,
-      wmExtent.ymax
-    );
+    const areaKm2 = calculateExtentAreaKm2(wmExtent.xmin, wmExtent.ymin, wmExtent.xmax, wmExtent.ymax);
     // Apply scale-based decluttering
     setIconScaleFactor(areaKm2);
 
     let detailLevel: string;
     if (areaKm2 >= AREA_THRESHOLDS.SMALL) {
-      apiService.setTransportFilter(["rail"]);
+      apiService.setTransportFilter(['rail']);
       apiService.setLongDistanceOnly(true);
-      detailLevel = "minimal";
+      detailLevel = 'minimal';
     } else if (areaKm2 >= AREA_THRESHOLDS.MEDIUM) {
-      apiService.setTransportFilter(["rail"]);
+      apiService.setTransportFilter(['rail']);
       apiService.setLongDistanceOnly(false);
-      detailLevel = "reduced";
+      detailLevel = 'reduced';
     } else {
-      apiService.setTransportFilter(["rail", "bus", "tram"]);
+      apiService.setTransportFilter(['rail', 'bus', 'tram']);
       apiService.setLongDistanceOnly(false);
-      detailLevel = "detailed";
+      detailLevel = 'detailed';
     }
 
     statusPanel.setExtentSize(areaKm2, detailLevel);
 
-    apiService.updateBBox(
-      wmExtent.xmin,
-      wmExtent.ymin,
-      wmExtent.xmax,
-      wmExtent.ymax
-    );
+    apiService.updateBBox(wmExtent.xmin, wmExtent.ymin, wmExtent.xmax, wmExtent.ymax);
   };
 }
 
 // Setup API service callbacks
-function setupApiCallbacks(
-  apiService: GeopsApiService,
-  vehicleLayer: FeatureLayer,
-  statusPanel: StatusPanel
-): void {
+function setupApiCallbacks(apiService: GeopsApiService, vehicleLayer: FeatureLayer, statusPanel: StatusPanel): void {
   apiService.onUpdate((vehicles) => {
     updateVehicles(vehicleLayer, vehicles);
   });
@@ -277,17 +251,12 @@ function setupApiCallbacks(
 }
 
 // Setup vehicle hover popup
-function setupVehiclePopup(
-  view: __esri.SceneView,
-  vehicleLayer: FeatureLayer
-): void {
+function setupVehiclePopup(view: __esri.SceneView, vehicleLayer: FeatureLayer): void {
   const vehiclePopup = new VehiclePopup();
 
-  view.on("pointer-move", async (event) => {
+  view.on('pointer-move', async (event) => {
     const response = await view.hitTest(event);
-    const results = response.results.filter(
-      (result) => "graphic" in result && result.graphic.layer === vehicleLayer
-    );
+    const results = response.results.filter((result) => 'graphic' in result && result.graphic.layer === vehicleLayer);
 
     if (results.length > 0) {
       const hit = results[0] as __esri.GraphicHit;
@@ -304,7 +273,7 @@ function setupVehiclePopup(
             type: attrs.type,
           },
           event.x,
-          event.y
+          event.y,
         );
       } else {
         // FeatureLayer may need to query for attributes
@@ -318,88 +287,80 @@ function setupVehiclePopup(
 
 // Initialize the application
 async function init() {
-  const sceneElement = document.querySelector("arcgis-scene");
+  const sceneElement = document.querySelector('arcgis-scene');
 
   if (!sceneElement) {
     return;
   }
 
-  sceneElement.setAttribute("item-id", websceneId);
+  sceneElement.setAttribute('item-id', websceneId);
 
-  sceneElement.addEventListener(
-    "arcgisViewReadyChange",
-    async (event: Event) => {
-      const target = event.target as HTMLElement & { view: __esri.SceneView };
-      const view = target.view;
+  sceneElement.addEventListener('arcgisViewReadyChange', async (event: Event) => {
+    const target = event.target as HTMLElement & { view: __esri.SceneView };
+    const view = target.view;
 
-      // Configure spatial references for layers
-      setVehicleSpatialReference(view.spatialReference);
-      setTrajectorySpatialReference(view.spatialReference);
+    // Configure spatial references for layers
+    setVehicleSpatialReference(view.spatialReference);
+    setTrajectorySpatialReference(view.spatialReference);
 
-      // Setup scene
-      await ensureGroundTerrain(view);
-      setInitialCamera(view);
+    // Setup scene
+    await ensureGroundTerrain(view);
+    setInitialCamera(view);
 
-      // Initialize layers
-      const { vehicleLayer } = initializeLayers(view);
+    // Initialize layers
+    const { vehicleLayer } = initializeLayers(view);
 
-      // Setup search (disabled for now)
-      // const { searchMarker } = initializeLayers(view);
-      // setupSearch(view, searchMarker);
+    // Setup search (disabled for now)
+    // const { searchMarker } = initializeLayers(view);
+    // setupSearch(view, searchMarker);
 
-      // Initialize panels and services
-      const statusPanel = new StatusPanel("status-panel-container");
-      const apiService = new GeopsApiService(["rail", "bus", "tram"]);
-      statusPanel.setApiService(apiService);
+    // Initialize panels and services
+    const statusPanel = new StatusPanel('status-panel-container');
+    const apiService = new GeopsApiService(['rail', 'bus', 'tram']);
+    statusPanel.setApiService(apiService);
 
-      // Load projection operator
-      try {
-        await projectOperator.load();
-      } catch {
-        // Continue without projection support
-      }
-
-      const webMercator = new SpatialReference({ wkid: 3857 });
-
-      // Setup bbox updates
-      const updateBBoxFromView = createBBoxUpdater(
-        view,
-        webMercator,
-        apiService,
-        statusPanel
-      );
-
-      reactiveUtils.watch(
-        () => view.stationary,
-        (stationary: boolean) => {
-          if (stationary) {
-            updateBBoxFromView();
-          }
-        }
-      );
-      updateBBoxFromView();
-
-      // Setup API callbacks
-      setupApiCallbacks(apiService, vehicleLayer, statusPanel);
-
-      // Start trajectory refresh interval
-      trajectoryRefreshInterval = window.setInterval(() => {
-        refreshTrajectories();
-      }, TRAJECTORY_REFRESH_INTERVAL);
-
-      // Setup vehicle popup
-      setupVehiclePopup(view, vehicleLayer);
-
-      // Clean up on page unload
-      window.addEventListener("beforeunload", () => {
-        if (trajectoryRefreshInterval) {
-          clearInterval(trajectoryRefreshInterval);
-        }
-        apiService.disconnect();
-      });
+    // Load projection operator
+    try {
+      await projectOperator.load();
+    } catch {
+      // Continue without projection support
     }
-  );
+
+    const webMercator = new SpatialReference({ wkid: 3857 });
+
+    // Setup bbox updates
+    const updateBBoxFromView = createBBoxUpdater(view, webMercator, apiService, statusPanel);
+
+    reactiveUtils.watch(
+      () => view.stationary,
+      (stationary: boolean) => {
+        if (stationary) {
+          updateBBoxFromView();
+        }
+      },
+    );
+    updateBBoxFromView();
+
+    // Setup API callbacks
+    setupApiCallbacks(apiService, vehicleLayer, statusPanel);
+
+    // Start trajectory refresh interval
+    trajectoryRefreshInterval = window.setInterval(() => {
+      refreshTrajectories();
+    }, TRAJECTORY_REFRESH_INTERVAL);
+
+    // Setup vehicle popup
+    setupVehiclePopup(view, vehicleLayer);
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      if (trajectoryRefreshInterval) {
+        clearInterval(trajectoryRefreshInterval);
+      }
+      apiService.disconnect();
+    });
+  });
 }
 
-// Start the app
-init();
+// Start the app (fire-and-forget)
+void init();

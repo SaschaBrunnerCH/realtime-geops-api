@@ -1,7 +1,7 @@
 // GeoJSON types for geOps API responses
 
 export interface GeoJSONLineString {
-  type: "LineString";
+  type: 'LineString';
   coordinates: [number, number][]; // Array of [x, y] in EPSG:3857
 }
 
@@ -23,13 +23,13 @@ export interface TrajectoryProperties {
 }
 
 export interface TrajectoryFeature {
-  type: "Feature";
+  type: 'Feature';
   geometry: GeoJSONLineString;
   properties: TrajectoryProperties;
 }
 
 // Vehicle state from realtime API
-export type VehicleState = "DRIVING" | "BOARDING" | "JOURNEY_CANCELLED";
+export type VehicleState = 'DRIVING' | 'BOARDING' | 'JOURNEY_CANCELLED';
 
 // Simplified vehicle representation for our application
 export interface Vehicle {
@@ -65,7 +65,7 @@ const DEFAULT_BBOX: BBox = {
 // Parse bbox from string format "left,bottom,right,top"
 function parseBBox(bboxString: string | null | undefined): BBox | null {
   if (!bboxString) return null;
-  const parts = bboxString.split(",").map(Number);
+  const parts = bboxString.split(',').map(Number);
   if (parts.length !== 4 || parts.some(isNaN)) return null;
   return {
     left: parts[0],
@@ -78,7 +78,7 @@ function parseBBox(bboxString: string | null | undefined): BBox | null {
 // Get bbox from query string or env var, fallback to default
 function getBBox(): BBox {
   const urlParams = new URLSearchParams(window.location.search);
-  const queryBBox = parseBBox(urlParams.get("bbox"));
+  const queryBBox = parseBBox(urlParams.get('bbox'));
   if (queryBBox) return queryBBox;
 
   const envBBox = parseBBox(import.meta.env.VITE_BBOX);
@@ -89,23 +89,14 @@ function getBBox(): BBox {
 
 // API config
 export const GEOPS_CONFIG = {
-  API_KEY: import.meta.env.VITE_GEOPS_API_KEY || "",
-  REST_BASE_URL: "https://api.geops.io/tracker/v1",
-  WEBSOCKET_URL: "wss://api.geops.io/tracker-ws/v1/ws",
+  API_KEY: import.meta.env.VITE_GEOPS_API_KEY || '',
+  REST_BASE_URL: 'https://api.geops.io/tracker/v1',
+  WEBSOCKET_URL: 'wss://api.geops.io/tracker-ws/v1/ws',
   BBOX: getBBox(),
 };
 
 // Long-distance train prefixes (single source of truth)
-export const LONG_DISTANCE_PREFIXES = [
-  "IC",
-  "ICE",
-  "EC",
-  "TGV",
-  "RJX",
-  "NJ",
-  "EN",
-  "IR",
-] as const;
+export const LONG_DISTANCE_PREFIXES = ['IC', 'ICE', 'EC', 'TGV', 'RJX', 'NJ', 'EN', 'IR'] as const;
 
 // Utility to check if a line name corresponds to a long-distance train
 export function isLongDistanceTrain(lineName: string | undefined): boolean {

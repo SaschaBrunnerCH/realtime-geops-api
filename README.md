@@ -38,12 +38,12 @@ src/
 ## Prerequisites
 
 - Node.js v24 or higher
-- npm
+- pnpm
 
 ## Installation
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Configuration
@@ -94,23 +94,46 @@ URL parameters take precedence over environment variables:
 Start the development server:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 The application will be available at `http://localhost:5173`
+
+### Code Quality
+
+Run linting and formatting checks:
+
+```bash
+pnpm run lint          # ESLint
+pnpm run format:check  # Prettier check
+pnpm run format        # Prettier fix
+```
+
+Tooling summary:
+
+- Prettier: single quotes, trailing commas, LF, width 120
+- ESLint: flat config with TypeScript-aware rules, `import/order`, `no-extraneous-dependencies`, and Prettier compatibility
+- Auto-fix on commit: `lint-staged` runs `eslint --fix` and `prettier --write` on staged files
+- Type check on push: `simple-git-hooks` runs `pnpm exec tsc --noEmit` on `pre-push`
+- Editor defaults: `.vscode/settings.json` formats on save with Prettier
+- Consistent endings: `.gitattributes` enforces LF line endings across OSes
+
+After cloning, run `pnpm install` to set up Git hooks.
+
+**Pull request checks**: GitHub Actions runs security audit, linting, formatting, type checking, and build on every PR.
 
 ## Build
 
 Build for production:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 Preview the production build:
 
 ```bash
-npm run preview
+pnpm run preview
 ```
 
 ## Tech Stack
@@ -139,11 +162,11 @@ npm run preview
 
 The application uses scale-based decluttering to optimize performance and readability based on the visible map area (measured in km²). Both vehicle filtering and icon scaling use the same thresholds (10,000 and 50,000 km²).
 
-| Visible Area      | Vehicles Shown              | Icon Scale | Line Numbers |
-| ----------------- | --------------------------- | ---------- | ------------ |
-| < 10,000 km²      | All (trains, trams, buses)  | 100%       | Visible      |
-| 10,000–50,000 km² | Trains only (all types)     | 60%        | Visible      |
-| ≥ 50,000 km²      | Long-distance trains only   | 30%        | Hidden       |
+| Visible Area      | Vehicles Shown             | Icon Scale | Line Numbers |
+| ----------------- | -------------------------- | ---------- | ------------ |
+| < 10,000 km²      | All (trains, trams, buses) | 100%       | Visible      |
+| 10,000–50,000 km² | Trains only (all types)    | 60%        | Visible      |
+| ≥ 50,000 km²      | Long-distance trains only  | 30%        | Hidden       |
 
 Long-distance train prefixes: `IC`, `ICE`, `EC`, `TGV`, `RJX`, `NJ`, `EN`, `IR`.
 
