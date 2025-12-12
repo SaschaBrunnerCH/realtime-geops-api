@@ -83,12 +83,12 @@ const ICON_CONFIG = {
   TEXT_LENGTH_THRESHOLDS: [2, 3, 4, 5],
 };
 
-// Area thresholds for icon display
-const AREA_THRESHOLDS = {
-  HIDE_LINE_NUMBERS: 50000,  // km² - hide line numbers when very zoomed out
-  FULL_SIZE: 2000,           // km² - full icon size at or below
-  MIN_SIZE: 100000,          // km² - minimum icon size at or above
+// Area thresholds for scale-based decluttering (3 discrete steps)
+export const AREA_THRESHOLDS = {
+  MEDIUM: 10000,   // km² - below: detailed (all vehicles, 100% icons), above: reduced (trains only, 60% icons)
+  SMALL: 50000,    // km² - above: minimal (long-distance only, 30% icons, no line numbers)
 };
+
 
 // Cache for SVG icons by line name (with max size to prevent memory leak)
 const svgIconCache = new Map<string, string>();
@@ -204,12 +204,10 @@ function getDelayCategory(delay: number): string {
   return "very-delayed";                     // red (>= 5 min)
 }
 
-// Get current scale key for renderer (changes when zoom level changes significantly)
+// Get current scale key for renderer (combines scale factor and text visibility)
 function getScaleKey(): string {
   const showText = shouldShowLineNumber();
-  // Round scale factor to avoid too many variations
-  const roundedScale = Math.round(currentScaleFactor * 10) / 10;
-  return `${roundedScale}-${showText}`;
+  return `${currentScaleFactor}-${showText}`;
 }
 
 // Create renderer key from vehicle properties
@@ -348,104 +346,26 @@ function getIconSize(type?: string): number {
   return Math.max(MIN_SIZE, Math.round(baseSize * currentScaleFactor));
 }
 
-// Store reference to the layer for refresh
-let currentVehicleLayer: FeatureLayer | null = null;
-
-// Store last known vehicle data for refresh
-let lastVehicleData: Vehicle[] = [];
-
-// Debounce timer for symbol refresh
-let refreshDebounceTimer: number | null = null;
-const REFRESH_DEBOUNCE_MS = 300;
-
 // Set the scale factor for icons based on extent size
-// areaKm2: the visible area in km²
+// Uses 3 discrete steps to limit icon variations
+// The animation loop applies changes automatically via symbolKey
 export function setIconScaleFactor(areaKm2: number): void {
-  const previousScaleKey = getScaleKey();
-
   currentAreaKm2 = areaKm2;
 
-  // Scale down icons as area increases (linear interpolation)
-  const { FULL_SIZE, MIN_SIZE } = AREA_THRESHOLDS;
-  if (areaKm2 <= FULL_SIZE) {
+  // 3 discrete scale steps based on area
+  const { MEDIUM, SMALL } = AREA_THRESHOLDS;
+  if (areaKm2 < MEDIUM) {
     currentScaleFactor = 1.0;
-  } else if (areaKm2 >= MIN_SIZE) {
-    currentScaleFactor = 0.25;
+  } else if (areaKm2 < SMALL) {
+    currentScaleFactor = 0.6;
   } else {
-    const t = (areaKm2 - FULL_SIZE) / (MIN_SIZE - FULL_SIZE);
-    currentScaleFactor = 1.0 - (t * 0.75); // 1.0 to 0.25
-  }
-
-  // If scale key changed, debounce refresh to avoid blocking during zoom
-  const newScaleKey = getScaleKey();
-  if (previousScaleKey !== newScaleKey && currentVehicleLayer && lastVehicleData.length > 0) {
-    if (refreshDebounceTimer !== null) {
-      clearTimeout(refreshDebounceTimer);
-    }
-    refreshDebounceTimer = window.setTimeout(() => {
-      refreshDebounceTimer = null;
-      refreshVehicleSymbols();
-    }, REFRESH_DEBOUNCE_MS);
-  }
-}
-
-// Refresh all vehicle symbols with current scale
-function refreshVehicleSymbols(): void {
-  if (!currentVehicleLayer || !projectionLoaded || lastVehicleData.length === 0) return;
-
-  const updateFeatures: Graphic[] = [];
-
-  for (const vehicle of lastVehicleData) {
-    const objectId = vehicleObjectIds.get(vehicle.id);
-    if (objectId === undefined) continue;
-
-    const lineName = vehicle.lineName || "?";
-    const delay = vehicle.delay || 0;
-    const type = vehicle.type || "";
-    const state = vehicle.state || "DRIVING";
-
-    // Ensure symbol exists in renderer for this combination with new scale
-    ensureSymbolInRenderer(type, lineName, delay, state as VehicleState);
-
-    // Create new symbol key with current scale
-    const delayCategory = getDelayCategory(delay);
-    const symbolKey = getRendererKey(type, lineName, delayCategory, state);
-
-    // Project from Web Mercator (3857) to target spatial reference
-    const projectedPoint = projectToTarget(vehicle.x, vehicle.y, 0);
-
-    const graphic = new Graphic({
-      geometry: new Point({
-        x: projectedPoint.x,
-        y: projectedPoint.y,
-        z: projectedPoint.z,
-        spatialReference: targetSpatialReference,
-      }),
-      attributes: {
-        OBJECTID: objectId,
-        vehicleId: vehicle.id,
-        lineName: lineName,
-        destination: vehicle.destination || "",
-        delay: delay,
-        type: type,
-        state: state,
-        lineColor: vehicle.lineColor || SBB_RED,
-        symbolKey: symbolKey,
-      },
-    });
-    updateFeatures.push(graphic);
-  }
-
-  if (updateFeatures.length > 0) {
-    currentVehicleLayer.applyEdits({
-      updateFeatures,
-    });
+    currentScaleFactor = 0.3;
   }
 }
 
 // Check if line numbers should be shown (hidden when very zoomed out)
 function shouldShowLineNumber(): boolean {
-  return currentAreaKm2 < AREA_THRESHOLDS.HIDE_LINE_NUMBERS;
+  return currentAreaKm2 < AREA_THRESHOLDS.SMALL;
 }
 
 // Update vehicles on the layer
@@ -455,10 +375,6 @@ export function updateVehicles(
 ): void {
   // Skip if projection not loaded yet
   if (!projectionLoaded) return;
-
-  // Store references for refresh
-  currentVehicleLayer = layer;
-  lastVehicleData = vehicles;
 
   // Track which vehicle IDs are in this update
   const currentIds = new Set<string>();

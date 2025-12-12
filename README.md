@@ -4,7 +4,6 @@ A real-time public transport visualization application that displays live vehicl
 
 ## <a href="https://saschabrunnerch.github.io/realtime-geops-api/" target="_blank" rel="noopener noreferrer">Live Demo</a>
 
-
 ## Features
 
 - **Real-time vehicle tracking** - Live positions of trains, trams, and buses updated via WebSocket
@@ -12,7 +11,7 @@ A real-time public transport visualization application that displays live vehicl
 - **Smooth animations** - Vehicle positions interpolated between updates for fluid movement
 - **Vehicle trajectories** - Colored path lines showing vehicle routes (FeatureLayer with UniqueValueRenderer)
 - **Hover popups** - Display line name, vehicle type, and delay information
-- **Adaptive display** - Icons scale and filter based on zoom level for optimal performance
+- **Scale-Based Decluttering** - Icons scale and vehicles filter based on zoom level for optimal performance
 - **Live statistics** - Real-time display of vehicle counts, FPS, and memory usage
 
 ## Architecture
@@ -128,7 +127,7 @@ npm run preview
 2. **Bounding Box Subscription** - Subscribes to vehicle updates within the visible map extent
 3. **Trajectory Processing** - Receives trajectory data with time intervals for position interpolation
 4. **Animation Loop** - Uses `requestAnimationFrame` to smoothly animate vehicles between known positions
-5. **Adaptive Display** - Icons and vehicle types adapt based on zoom level (see below)
+5. **Scale-Based Decluttering** - Icons and vehicle types adapt based on zoom level (see below)
 
 ### Implementation Details
 
@@ -136,49 +135,27 @@ npm run preview
 - **Memory display**: Uses the non-standard `performance.memory` API which is available in Chromium-based browsers; other browsers will show `N/A`.
 - **BBox update threshold**: The subscription only refreshes when the extent changes beyond ~5% in size or center shift to avoid excessive WebSocket re-subscriptions.
 
-## Adaptive Display System
+## Scale-Based Decluttering
 
-The application uses an intelligent adaptive display system that optimizes performance and readability based on the visible map area (measured in km²).
+The application uses scale-based decluttering to optimize performance and readability based on the visible map area (measured in km²). Both vehicle filtering and icon scaling use the same thresholds (10,000 and 50,000 km²).
 
-### Vehicle Type Filtering
+| Visible Area      | Vehicles Shown              | Icon Scale | Line Numbers |
+| ----------------- | --------------------------- | ---------- | ------------ |
+| < 10,000 km²      | All (trains, trams, buses)  | 100%       | Visible      |
+| 10,000–50,000 km² | Trains only (all types)     | 60%        | Visible      |
+| ≥ 50,000 km²      | Long-distance trains only   | 30%        | Hidden       |
 
-As you zoom out, the application progressively filters vehicle types to reduce clutter and improve performance:
+Long-distance train prefixes: `IC`, `ICE`, `EC`, `TGV`, `RJX`, `NJ`, `EN`, `IR`.
 
-| Visible Area      | Vehicles Shown                                 |
-| ----------------- | ---------------------------------------------- |
-| < 15,000 km²      | All vehicles (trains, trams, buses)            |
-| 15,000–50,000 km² | Trains only (all types)                        |
-| > 50,000 km²      | Long-distance trains only (IC, ICE, TGV, etc.) |
-
-Long-distance train prefixes used by the filter: `IC`, `ICE`, `EC`, `TGV`, `RJX`, `NJ`, `EN`, `IR`.
-
-### Icon Scaling
-
-Icons dynamically scale based on the visible area to maintain visual clarity:
-
-| Visible Area      | Scale Factor | Effect               |
-| ----------------- | ------------ | -------------------- |
-| ≤ 2,000 km²       | 100%         | Full size icons      |
-| 2,000–100,000 km² | 100%–25%     | Linear interpolation |
-| ≥ 100,000 km²     | 25%          | Minimum size icons   |
-
-Base icon sizes:
-
-- **Rail vehicles**: 38px (at 100% scale)
-- **Bus/Tram**: 19px (at 100% scale)
-- **Minimum size**: 8px (never smaller)
-
-### Line Number Display
-
-Line numbers (e.g., "S3", "IC5", "Bus 31") inside vehicle icons are hidden when the visible area exceeds **50,000 km²** to reduce visual noise at large scales.
+Base icon sizes: **Rail** 38px, **Bus/Tram** 19px, **Minimum** 8px (at 100% scale).
 
 ### How It Works Technically
 
 1. On each view extent change, the application calculates the visible area in km²
-2. The `setIconScaleFactor()` function in `vehicle-layer.ts` computes the appropriate scale
-3. The `setTransportFilter()` and `setLongDistanceOnly()` methods in `geops-api.ts` filter the WebSocket subscription
+2. The `setIconScaleFactor()` function in `vehicle-layer.ts` sets the current scale step
+3. The `setTransportFilter()` and `setLongDistanceOnly()` methods in `geops-api.ts` filter the WebSocket subscription and remove vehicles that no longer match
 4. The vehicle FeatureLayer uses a `UniqueValueRenderer` with dynamically added symbols based on vehicle type, line name, delay category, state, and scale
-5. When scale changes, symbols are regenerated with new sizes (debounced to avoid UI blocking)
+5. Scale changes are applied seamlessly through the animation loop—no explicit refresh needed
 
 ## 3D Animated Marker (Currently Disabled)
 
