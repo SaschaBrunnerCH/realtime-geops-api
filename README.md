@@ -156,7 +156,9 @@ pnpm run preview
 
 ### Implementation Details
 
-- **StreamLayer ID system**: Each vehicle has a `TRACKID` (stable, identifies the vehicle) and each update message has a unique `OBJECTID` (increments with every position update). StreamLayer requires unique OBJECTIDs to process new observations, while TRACKID groups observations by vehicle.
+- **StreamLayer ID system**: Each vehicle has a `TRACKID` (stable, identifies the vehicle) and each update
+  message has a unique `OBJECTID` (increments with every position update). StreamLayer requires unique
+  OBJECTIDs to process new observations, while TRACKID groups observations by vehicle.
 - **StreamLayer purge options**: Configured with `maxObservations: 1` to show only the latest position per vehicle, and `ageReceived: 1` to auto-remove stale features after 1 minute.
 - **OBJECTID overflow protection**: The counter resets at 1 billion to prevent overflow (safe since old features are purged).
 - **FPS reporting**: Calculated over rolling ~1s windows from the animation loop and updated periodically.
