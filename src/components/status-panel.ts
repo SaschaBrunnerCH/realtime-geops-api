@@ -107,7 +107,7 @@ export class StatusPanel {
           <span class="panel-details">(<span id="live-update-count">0</span> / <span id="fps-value">0</span> FPS / <span id="stats-memory">-</span> MB)</span>
         </div>
         <div class="panel-row panel-area">
-          <span>Area: <span id="stats-extent">0</span> km² (<span id="stats-scale">large</span>)</span>
+          <span>Area: <span id="stats-extent">0</span> km² (<span id="stats-scale">detailed</span>)</span>
         </div>
         <div class="panel-row panel-logo">
           <a href="https://developer.geops.io/apis/realtime" target="_blank" rel="noopener noreferrer">
