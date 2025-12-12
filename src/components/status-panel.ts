@@ -41,12 +41,16 @@ export class StatusPanel {
     this.apiService = apiService;
   }
 
-  // Update extent size (called from main.ts when view extent changes)
-  setExtentSize(km2: number) {
+  // Update extent size and detail level (called from main.ts when view extent changes)
+  setExtentSize(km2: number, detailLevel: string) {
     const extentEl = document.getElementById('stats-extent');
+    const scaleEl = document.getElementById('stats-scale');
     if (extentEl) {
       // Format with apostrophe as thousands separator (Swiss style)
       extentEl.textContent = Math.round(km2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+    }
+    if (scaleEl) {
+      scaleEl.textContent = detailLevel;
     }
   }
 
@@ -103,7 +107,7 @@ export class StatusPanel {
           <span class="panel-details">(<span id="live-update-count">0</span> / <span id="fps-value">0</span> FPS / <span id="stats-memory">-</span> MB)</span>
         </div>
         <div class="panel-row panel-area">
-          Area: <span id="stats-extent">0</span> km²
+          <span>Area: <span id="stats-extent">0</span> km² (<span id="stats-scale">large</span>)</span>
         </div>
         <div class="panel-row panel-logo">
           <a href="https://developer.geops.io/apis/realtime" target="_blank" rel="noopener noreferrer">

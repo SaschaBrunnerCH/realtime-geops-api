@@ -340,7 +340,20 @@ export class GeopsApiService {
 
   // Set transport filter without re-subscribing (use updateBBox after to apply)
   setTransportFilter(mots: string[]) {
+    const previousMots = this.currentMots;
     this.currentMots = mots;
+
+    // Remove trajectories that no longer match the filter
+    if (previousMots.length !== mots.length || !previousMots.every(m => mots.includes(m))) {
+      for (const [id, trajectory] of this.trajectories) {
+        if (!mots.includes(trajectory.type)) {
+          this.trajectories.delete(id);
+          if (this.onVehicleDelete) {
+            this.onVehicleDelete(id);
+          }
+        }
+      }
+    }
   }
 
   // Set whether to show only long-distance trains (IC, ICE, EC, IR, TGV, etc.)
@@ -355,6 +368,9 @@ export class GeopsApiService {
             !isLongDistanceTrain(trajectory.lineName)
           ) {
             this.trajectories.delete(id);
+            if (this.onVehicleDelete) {
+              this.onVehicleDelete(id);
+            }
           }
         }
       }

@@ -60,6 +60,7 @@ import {
   removeVehicle,
   setTargetSpatialReference as setVehicleSpatialReference,
   setIconScaleFactor,
+  AREA_THRESHOLDS,
 } from "./layers/vehicle-layer";
 import {
   createTrajectoryLayer,
@@ -74,8 +75,6 @@ import { VehiclePopup } from "./components/vehicle-popup";
 // import { AnimatedMarker } from "./components/animated-marker";
 
 // Constants for extent-based filtering
-const MAX_AREA_FOR_BUSES = 15000;
-const MAX_AREA_FOR_ALL_TRAINS = 50000;
 const TRAJECTORY_REFRESH_INTERVAL = 2000;
 
 // Store interval ID for cleanup
@@ -223,20 +222,25 @@ function createBBoxUpdater(
       wmExtent.xmax,
       wmExtent.ymax
     );
-    statusPanel.setExtentSize(areaKm2);
+    // Apply scale-based decluttering
     setIconScaleFactor(areaKm2);
 
-    // Filter transport modes based on extent size
-    if (areaKm2 > MAX_AREA_FOR_ALL_TRAINS) {
+    let detailLevel: string;
+    if (areaKm2 >= AREA_THRESHOLDS.SMALL) {
       apiService.setTransportFilter(["rail"]);
       apiService.setLongDistanceOnly(true);
-    } else if (areaKm2 > MAX_AREA_FOR_BUSES) {
+      detailLevel = "minimal";
+    } else if (areaKm2 >= AREA_THRESHOLDS.MEDIUM) {
       apiService.setTransportFilter(["rail"]);
       apiService.setLongDistanceOnly(false);
+      detailLevel = "reduced";
     } else {
       apiService.setTransportFilter(["rail", "bus", "tram"]);
       apiService.setLongDistanceOnly(false);
+      detailLevel = "detailed";
     }
+
+    statusPanel.setExtentSize(areaKm2, detailLevel);
 
     apiService.updateBBox(
       wmExtent.xmin,
