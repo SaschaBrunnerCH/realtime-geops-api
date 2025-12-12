@@ -50,6 +50,8 @@ import SpatialReference from '@arcgis/core/geometry/SpatialReference';
 import { setAssetPath } from '@esri/calcite-components/dist/components';
 
 // Import our services and components
+import { AnimatedMarker } from './components/animated-marker';
+import { SearchPanel } from './components/search-panel';
 import { StatusPanel } from './components/status-panel';
 import { VehiclePopup } from './components/vehicle-popup';
 import {
@@ -70,8 +72,6 @@ import {
 import { GeopsApiService } from './services/geops-api';
 
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
-// import { SearchPanel } from "./components/search-panel";
-// import { AnimatedMarker } from "./components/animated-marker";
 
 // Constants for extent-based filtering
 const TRAJECTORY_REFRESH_INTERVAL = 2000;
@@ -130,42 +130,40 @@ function setInitialCamera(view: __esri.SceneView): void {
 function initializeLayers(view: __esri.SceneView): {
   vehicleLayer: FeatureLayer;
   trajectoryLayer: FeatureLayer;
+  searchMarker: AnimatedMarker;
 } {
   const trajectoryLayer = createTrajectoryLayer();
   const vehicleLayer = createVehicleLayer();
-  // const searchMarker = new AnimatedMarker();
+  const searchMarker = new AnimatedMarker();
 
   if (view.map) {
     view.map.add(trajectoryLayer);
     view.map.add(vehicleLayer);
-    // view.map.add(searchMarker.getLayer());
+    view.map.add(searchMarker.getLayer());
   }
 
-  return { vehicleLayer, trajectoryLayer };
+  return { vehicleLayer, trajectoryLayer, searchMarker };
 }
 
-// Setup station search functionality (disabled for now)
-// function setupSearch(
-//   view: __esri.SceneView,
-//   searchMarker: AnimatedMarker
-// ): void {
-//   const searchPanel = new SearchPanel("search-panel-container");
-//   searchPanel.onSelect(async (lng, lat) => {
-//     try {
-//       await view.goTo({
-//         center: [lng, lat],
-//         zoom: 16,
-//         tilt: 60,
-//       });
-//       await searchMarker.show(lng, lat);
-//     } catch {
-//       // Ignore navigation errors
-//     }
-//   });
-//   searchPanel.onClear(() => {
-//     searchMarker.hide();
-//   });
-// }
+// Setup station search functionality
+function setupSearch(view: __esri.SceneView, searchMarker: AnimatedMarker): void {
+  const searchPanel = new SearchPanel('search-panel-container');
+  searchPanel.onSelect(async (lng, lat) => {
+    try {
+      await view.goTo({
+        center: [lng, lat],
+        zoom: 16,
+        tilt: 60,
+      });
+      await searchMarker.show(lng, lat);
+    } catch {
+      // Ignore navigation errors
+    }
+  });
+  searchPanel.onClear(() => {
+    searchMarker.hide();
+  });
+}
 
 // Create bbox update handler
 function createBBoxUpdater(
@@ -308,11 +306,10 @@ async function init() {
     setInitialCamera(view);
 
     // Initialize layers
-    const { vehicleLayer } = initializeLayers(view);
+    const { vehicleLayer, searchMarker } = initializeLayers(view);
 
-    // Setup search (disabled for now)
-    // const { searchMarker } = initializeLayers(view);
-    // setupSearch(view, searchMarker);
+    // Setup search
+    setupSearch(view, searchMarker);
 
     // Initialize panels and services
     const statusPanel = new StatusPanel('status-panel-container');

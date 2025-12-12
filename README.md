@@ -10,6 +10,7 @@ A real-time public transport visualization application that displays live vehicl
 - **3D visualization** - Interactive 3D globe view using ArcGIS SceneView
 - **Smooth animations** - Vehicle positions interpolated between updates for fluid movement
 - **Vehicle trajectories** - Colored path lines showing vehicle routes (FeatureLayer with UniqueValueRenderer)
+- **Station search** - Search for stations with animated 3D marker at the selected location
 - **Hover popups** - Display line name, vehicle type, and delay information
 - **Scale-Based Decluttering** - Icons scale and vehicles filter based on zoom level for optimal performance
 - **Live statistics** - Real-time display of vehicle counts, FPS, and memory usage
@@ -25,10 +26,10 @@ src/
 │   ├── vehicle-layer.ts       # Vehicle FeatureLayer with dynamic UniqueValueRenderer
 │   └── trajectory-layer.ts    # Trajectory FeatureLayer with type-based styling
 ├── components/
-│   ├── search-panel.ts        # Station search functionality (currently disabled)
+│   ├── search-panel.ts        # Station search functionality
 │   ├── status-panel.ts        # Clock, stats, and status display
 │   ├── vehicle-popup.ts       # Hover popup for vehicle details
-│   └── animated-marker.ts     # 3D animated marker for search results (currently disabled)
+│   └── animated-marker.ts     # 3D animated marker for search results
 ├── types/
 │   └── geops.ts               # TypeScript types and API configuration
 └── icons/
@@ -180,13 +181,13 @@ Base icon sizes: **Rail** 38px, **Bus/Tram** 19px, **Minimum** 8px (at 100% scal
 4. The vehicle FeatureLayer uses a `UniqueValueRenderer` with dynamically added symbols based on vehicle type, line name, delay category, state, and scale
 5. Scale changes are applied seamlessly through the animation loop—no explicit refresh needed
 
-## 3D Animated Marker (Currently Disabled)
+## Station Search
 
-When searching for a station, a 3D animated pinpoint marker is displayed at the location. The marker features a smooth up-and-down bouncing animation to draw attention to the search result.
+Search for stations using the search panel in the top-right corner. When a station is selected, the map navigates to the location and displays a 3D animated marker.
 
-> **Note**: Station search and the animated marker are currently disabled.
+### 3D Animated Marker
 
-The animation is implemented using the ArcGIS Maps SDK mesh animation capabilities, based on the technique described in [Mesh Animations in the ArcGIS Maps SDK for JavaScript](https://www.esri.com/arcgis-blog/products/js-api-arcgis/3d-gis/mesh-animations-javascript/).
+The marker features a smooth up-and-down bouncing animation to draw attention to the search result. The animation is implemented using the ArcGIS Maps SDK mesh animation capabilities, based on the technique described in [Mesh Animations in the ArcGIS Maps SDK for JavaScript](https://www.esri.com/arcgis-blog/products/js-api-arcgis/3d-gis/mesh-animations-javascript/).
 
 The marker:
 
