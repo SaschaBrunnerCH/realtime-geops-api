@@ -1,8 +1,7 @@
 import * as projectOperator from '@arcgis/core/geometry/operators/projectOperator';
 import Point from '@arcgis/core/geometry/Point';
 import SpatialReference from '@arcgis/core/geometry/SpatialReference';
-import Graphic from '@arcgis/core/Graphic';
-import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import StreamLayer from '@arcgis/core/layers/StreamLayer';
 import UniqueValueRenderer from '@arcgis/core/renderers/UniqueValueRenderer';
 import IconSymbol3DLayer from '@arcgis/core/symbols/IconSymbol3DLayer';
 import PointSymbol3D from '@arcgis/core/symbols/PointSymbol3D';
@@ -61,15 +60,30 @@ function projectToTarget(x: number, y: number, z: number): Point {
 // Default colors
 const SBB_RED = '#e2231a';
 
-// Store object IDs by vehicle ID for efficient updates
-const vehicleObjectIds = new Map<string, number>();
-let nextObjectId = 1;
+// StreamLayer ID system:
+// - TRACKID: Stable ID per vehicle, used by StreamLayer to group observations
+// - OBJECTID: Unique per message, must increment for StreamLayer to process updates
+const vehicleTrackIds = new Map<string, number>();
+let nextTrackId = 1;
+let objectIdCounter = 1;
+
+// Get next OBJECTID with overflow protection (resets at 1 billion)
+// Safe because old features are purged via maxObservations and ageReceived
+function getNextObjectId(): number {
+  if (objectIdCounter >= 1_000_000_000) {
+    objectIdCounter = 1;
+  }
+  return objectIdCounter++;
+}
 
 // Track which symbol combinations have been added to renderer
 const addedSymbolKeys = new Set<string>();
 
 // Reference to the renderer for dynamic symbol updates
 let vehicleRenderer: UniqueValueRenderer | null = null;
+
+// Reference to the stream layer
+let streamLayer: StreamLayer | null = null;
 
 // Shape types for vehicle icons
 type IconShape = 'circle' | 'square';
@@ -236,8 +250,8 @@ function ensureSymbolInRenderer(type: string, lineName: string, delay: number, s
   addedSymbolKeys.add(key);
 }
 
-// Create a FeatureLayer for vehicles
-export function createVehicleLayer(): FeatureLayer {
+// Create a StreamLayer for vehicles
+export function createVehicleLayer(): StreamLayer {
   // Create renderer with dynamic unique values
   const defaultSymbol = new PointSymbol3D({
     symbolLayers: [
@@ -255,19 +269,24 @@ export function createVehicleLayer(): FeatureLayer {
     uniqueValueInfos: [],
   });
 
-  const layer = new FeatureLayer({
+  streamLayer = new StreamLayer({
     id: 'vehicles',
     title: 'Vehicles',
-    source: [],
     objectIdField: 'OBJECTID',
     geometryType: 'point',
-    hasZ: true,
     spatialReference: targetSpatialReference,
-    elevationInfo: {
-      mode: 'relative-to-ground',
+    timeInfo: {
+      trackIdField: 'TRACKID',
+    },
+    updateInterval: 50,
+    purgeOptions: {
+      displayCount: 10000,
+      maxObservations: 1, // Only keep latest position per track
+      ageReceived: 1, // Remove features not updated in 1 minute (fallback cleanup)
     },
     fields: [
       { name: 'OBJECTID', alias: 'Object ID', type: 'oid' },
+      { name: 'TRACKID', alias: 'Track ID', type: 'long' },
       { name: 'vehicleId', alias: 'Vehicle ID', type: 'string' },
       { name: 'lineName', alias: 'Line Name', type: 'string' },
       { name: 'destination', alias: 'Destination', type: 'string' },
@@ -277,11 +296,13 @@ export function createVehicleLayer(): FeatureLayer {
       { name: 'lineColor', alias: 'Line Color', type: 'string' },
       { name: 'symbolKey', alias: 'Symbol Key', type: 'string' },
     ],
-    outFields: ['*'], // Include all fields in queries/hitTest
+    elevationInfo: {
+      mode: 'relative-to-ground',
+    },
     renderer: vehicleRenderer,
   });
 
-  return layer;
+  return streamLayer;
 }
 
 // Create symbol for a vehicle based on current mode and state
@@ -369,18 +390,30 @@ function shouldShowLineNumber(): boolean {
   return currentAreaKm2 < AREA_THRESHOLDS.SMALL;
 }
 
-// Update vehicles on the layer
-export function updateVehicles(layer: FeatureLayer, vehicles: Vehicle[]): void {
+// Get or create a numeric TRACKID for a vehicle (stable across updates)
+function getTrackId(vehicleId: string): number {
+  let trackId = vehicleTrackIds.get(vehicleId);
+  if (trackId === undefined) {
+    trackId = nextTrackId++;
+    vehicleTrackIds.set(vehicleId, trackId);
+  }
+  return trackId;
+}
+
+// Update vehicles on the StreamLayer via sendMessageToClient
+// Each update requires a unique OBJECTID; TRACKID identifies the vehicle
+export function updateVehicles(layer: StreamLayer, vehicles: Vehicle[]): void {
   // Skip if projection not loaded yet
   if (!projectionLoaded) return;
 
   // Track which vehicle IDs are in this update
   const currentIds = new Set<string>();
 
-  // Collect edits
-  const addFeatures: Graphic[] = [];
-  const updateFeatures: Graphic[] = [];
-  const deleteFeatures: { objectId: number }[] = [];
+  // Build features for streaming
+  const features: {
+    attributes: Record<string, unknown>;
+    geometry: { x: number; y: number; z: number };
+  }[] = [];
 
   for (const vehicle of vehicles) {
     currentIds.add(vehicle.id);
@@ -400,71 +433,64 @@ export function updateVehicles(layer: FeatureLayer, vehicles: Vehicle[]): void {
     const delayCategory = getDelayCategory(delay);
     const symbolKey = getRendererKey(type, lineName, delayCategory, state);
 
-    const geometry = new Point({
-      x: projectedPoint.x,
-      y: projectedPoint.y,
-      z: projectedPoint.z,
-      spatialReference: targetSpatialReference,
+    // Get or create track ID for this vehicle
+    const trackId = getTrackId(vehicle.id);
+
+    features.push({
+      attributes: {
+        OBJECTID: getNextObjectId(),
+        TRACKID: trackId,
+        vehicleId: vehicle.id,
+        lineName: lineName,
+        destination: vehicle.destination || '',
+        delay: delay,
+        type: type,
+        state: state,
+        lineColor: vehicle.lineColor || SBB_RED,
+        symbolKey: symbolKey,
+      },
+      geometry: {
+        x: projectedPoint.x,
+        y: projectedPoint.y,
+        z: projectedPoint.z || 0,
+      },
     });
-
-    const attributes = {
-      vehicleId: vehicle.id,
-      lineName: lineName,
-      destination: vehicle.destination || '',
-      delay: delay,
-      type: type,
-      state: state,
-      lineColor: vehicle.lineColor || SBB_RED,
-      symbolKey: symbolKey,
-    };
-
-    const existingObjectId = vehicleObjectIds.get(vehicle.id);
-
-    if (existingObjectId !== undefined) {
-      // Update existing feature
-      const graphic = new Graphic({
-        geometry,
-        attributes: { ...attributes, OBJECTID: existingObjectId },
-      });
-      updateFeatures.push(graphic);
-    } else {
-      // Create new feature
-      const objectId = nextObjectId++;
-      vehicleObjectIds.set(vehicle.id, objectId);
-
-      const graphic = new Graphic({
-        geometry,
-        attributes: { ...attributes, OBJECTID: objectId },
-      });
-      addFeatures.push(graphic);
-    }
   }
 
-  // Find vehicles to delete
-  for (const [vehicleId, objectId] of vehicleObjectIds) {
+  // Find vehicles to delete (no longer in update)
+  const deleteTrackIds: number[] = [];
+  for (const [vehicleId, trackId] of vehicleTrackIds) {
     if (!currentIds.has(vehicleId)) {
-      deleteFeatures.push({ objectId });
-      vehicleObjectIds.delete(vehicleId);
+      deleteTrackIds.push(trackId);
+      vehicleTrackIds.delete(vehicleId);
     }
   }
 
-  // Apply all edits in a single batch
-  if (addFeatures.length > 0 || updateFeatures.length > 0 || deleteFeatures.length > 0) {
-    void layer.applyEdits({
-      addFeatures,
-      updateFeatures,
-      deleteFeatures,
+  // Send updates to stream layer
+  if (features.length > 0) {
+    layer.sendMessageToClient({
+      type: 'features',
+      features: features,
+    });
+  }
+
+  // Send deletions if any
+  if (deleteTrackIds.length > 0) {
+    layer.sendMessageToClient({
+      type: 'delete',
+      trackIds: deleteTrackIds,
     });
   }
 }
 
-// Remove a single vehicle by ID
-export function removeVehicle(layer: FeatureLayer, vehicleId: string): void {
-  const objectId = vehicleObjectIds.get(vehicleId);
-  if (objectId !== undefined) {
-    void layer.applyEdits({
-      deleteFeatures: [{ objectId }],
+// Remove a single vehicle by its TRACKID
+export function removeVehicle(layer: StreamLayer, vehicleId: string): void {
+  const trackId = vehicleTrackIds.get(vehicleId);
+  if (trackId !== undefined) {
+    layer.sendMessageToClient({
+      type: 'delete',
+      trackIds: [trackId],
     });
-    vehicleObjectIds.delete(vehicleId);
+    vehicleTrackIds.delete(vehicleId);
   }
 }
